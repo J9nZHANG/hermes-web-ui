@@ -6,6 +6,7 @@ import { useMessage } from "naive-ui";
 import { downloadFile, getDownloadUrl } from "@/api/hermes/download";
 import { copyToClipboard } from "@/utils/clipboard";
 import MarkdownRenderer from "./MarkdownRenderer.vue";
+import logoUrl from "@/assets/logo.png";
 import { parseThinking, countThinkingChars } from "@/utils/thinking-parser";
 import { useChatStore } from "@/stores/hermes/chat";
 import { useProfilesStore } from "@/stores/hermes/profiles";
@@ -777,6 +778,8 @@ onBeforeUnmount(() => {
       <div class="msg-body">
         <ProfileAvatar
           v-if="message.role === 'assistant'"
+          :src="logoUrl"
+          alt="Hermes"
           class="msg-avatar"
           :name="assistantProfileName"
           :avatar="assistantProfileAvatar"

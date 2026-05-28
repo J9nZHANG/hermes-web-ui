@@ -27,6 +27,7 @@ function createProxyConfig(): ProxyOptions {
 }
 
 export default defineConfig({
+  base: '/hermes/',
   root: 'packages/client',
   plugins: [vue()],
   define: {

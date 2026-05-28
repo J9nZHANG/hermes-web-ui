@@ -13,6 +13,7 @@ import { usePersistentRecord } from '@/composables/usePersistentRecord'
 import RouteLinkItem from '@/components/common/RouteLinkItem.vue'
 import { changelog } from "@/data/changelog";
 import { isStoredSuperAdmin } from "@/api/client";
+import logoUrl from "@/assets/logo.png";
 
 const { t } = useI18n();
 const message = useMessage();
@@ -32,7 +33,7 @@ const isVersionPreview = import.meta.env.VITE_HERMES_PREVIEW === '1';
 function isNavActive(...names: string[]) {
   return names.includes(selectedKey.value);
 }
-const logoPath = '/logo.png';
+const logoPath = logoUrl;
 
 const { record: collapsedGroups, persist: persistCollapsedGroups } = usePersistentRecord('hermes.sidebar.collapsedGroups');
 

@@ -6,14 +6,13 @@ services:
     image: ${WEBUI_IMAGE:-hermes-web-ui-local:latest}
     container_name: ${WEBUI_CONTAINER_NAME:-hermes-webui}
     ports:
-      - "${PORT:-6060}:${PORT:-6060}"
-      - "${PREVIEW_FRONTEND_PORT:-8651}:8651"
+      - "${PORT:-8648}:${PORT:-8648}"
       - "${XAI_OAUTH_PORT:-56121}:56121"
     volumes:
       - ${HERMES_DATA_DIR:-./hermes_data}:/home/agent/.hermes
       - ${HERMES_DATA_DIR:-./hermes_data}/hermes-web-ui:/home/agent/.hermes-web-ui
     environment:
-      - PORT=${PORT:-6060}
+      - PORT=${PORT:-8648}
       - HERMES_HOME=/home/agent/.hermes
       - HERMES_BIN=/opt/hermes/.venv/bin/hermes
       - HERMES_WEB_UI_MANAGED_GATEWAY=1

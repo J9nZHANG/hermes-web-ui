@@ -11,6 +11,7 @@ import { useAppStore } from '@/stores/hermes/app'
 import SessionSearchModal from '@/components/hermes/chat/SessionSearchModal.vue'
 import AuthEventListener from '@/components/auth/AuthEventListener.vue'
 import DefaultCredentialPrompt from '@/components/auth/DefaultCredentialPrompt.vue'
+import logoUrl from '@/assets/logo.png'
 
 const { isDark, isComic } = useTheme()
 const { t } = useI18n()
@@ -65,7 +66,7 @@ useKeyboard()
           </div>
           <div v-if="ready" class="app-layout" :class="{ 'no-sidebar': isLoginPage }">
             <button v-if="!isLoginPage" class="hamburger-btn" @click="appStore.toggleSidebar">
-              <img src="/logo.png" alt="Menu" style="width: 24px; height: 24px;" />
+              <img :src="logoUrl" alt="Menu" style="width: 24px; height: 24px;" />
             </button>
             <div v-if="!isLoginPage && appStore.sidebarOpen" class="mobile-backdrop" @click="appStore.closeSidebar" />
             <AppSidebar v-if="!isLoginPage" />

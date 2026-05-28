@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { ref, computed, nextTick, watch } from "vue";
+import { ref, computed, watch, nextTick } from "vue";
 import { useI18n } from "vue-i18n";
-import VirtualMessageList from "./VirtualMessageList.vue";
 import MessageItem from "./MessageItem.vue";
 import { useChatStore } from "@/stores/hermes/chat";
 import thinkingImageLight from "@/assets/thinking-light.gif";
 import thinkingImageDark from "@/assets/thinking-dark.gif";
+import logoUrl from "@/assets/logo.png";
 import { useTheme } from "@/composables/useTheme";
 import { useToolTraceVisibility } from "@/composables/useToolTraceVisibility";
 
@@ -13,7 +13,7 @@ const chatStore = useChatStore();
 const { t } = useI18n();
 const { isDark } = useTheme();
 const { toolTraceVisible } = useToolTraceVisibility();
-const listRef = ref<InstanceType<typeof VirtualMessageList> | null>(null);
+const listRef = ref<HTMLElement>();
 
 function formatTokens(n: number): string {
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M'
@@ -85,29 +85,26 @@ function queuedPreview(content: string): string {
 }
 
 function isNearBottom(threshold = 200): boolean {
-  return listRef.value?.isNearBottom(threshold) ?? true;
+  const el = listRef.value;
+  if (!el) return true;
+  return el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
 }
 
 function scrollToBottom() {
-  listRef.value?.scrollToBottom();
+  nextTick(() => {
+    if (listRef.value) {
+      listRef.value.scrollTop = listRef.value.scrollHeight;
+    }
+  });
 }
 
 function scrollToMessage(messageId: string) {
-  listRef.value?.scrollToMessage(messageId);
-}
-
-function scrollToAnchor(messageId: string, anchorId: string) {
-  listRef.value?.scrollToAnchor(messageId, anchorId);
-}
-
-async function handleTopReach() {
-  const session = chatStore.activeSession;
-  if (!session?.hasMoreBefore || session.isLoadingOlderMessages) return;
-  const snapshot = listRef.value?.captureScrollPosition() ?? null;
-  const loaded = await chatStore.loadOlderMessages(session.id);
-  if (!loaded) return;
-  await nextTick();
-  listRef.value?.restoreScrollPosition(snapshot);
+  nextTick(() => {
+    const el = document.getElementById(`message-${messageId}`);
+    if (el) {
+      el.scrollIntoView({ block: 'center' });
+    }
+  });
 }
 
 // Scroll to bottom on session switch
@@ -116,10 +113,10 @@ watch(
   (id) => {
     if (!id) return;
     if (chatStore.focusMessageId) {
-      scrollToMessage(chatStore.focusMessageId);
+      nextTick(() => scrollToMessage(chatStore.focusMessageId!));
       return;
     }
-    scrollToBottom();
+    nextTick(() => scrollToBottom());
   },
   { immediate: true },
 );
@@ -160,42 +157,21 @@ watch(currentToolCalls, () => {
   if (!isNearBottom()) return;
   scrollToBottom();
 });
-
-defineExpose({
-  scrollToBottom,
-  scrollToMessage,
-  scrollToAnchor,
-});
 </script>
 
 <template>
-  <VirtualMessageList
-    ref="listRef"
-    :messages="displayMessages"
-    @top-reach="handleTopReach"
-  >
-    <template #empty>
-      <div class="empty-state">
-        <img src="/logo.png" alt="Hermes" class="empty-logo" />
-        <p>{{ t("chat.emptyState") }}</p>
-      </div>
-    </template>
-    <template #before>
-      <div
-        v-if="chatStore.activeSession?.hasMoreBefore || chatStore.activeSession?.isLoadingOlderMessages"
-        class="history-loader"
-      >
-        <span v-if="chatStore.activeSession?.isLoadingOlderMessages" class="history-loader-spinner"></span>
-      </div>
-    </template>
-    <template #item="{ message: msg }">
-      <MessageItem
-        :message="msg"
-        :highlight="chatStore.focusMessageId === msg.id"
-      />
-    </template>
-    <template #after>
-      <Transition name="fade">
+  <div ref="listRef" class="message-list">
+    <div v-if="chatStore.messages.length === 0" class="empty-state">
+      <img :src="logoUrl" alt="Hermes" class="empty-logo" />
+      <p>{{ t("chat.emptyState") }}</p>
+    </div>
+    <MessageItem
+      v-for="msg in displayMessages"
+      :key="msg.id"
+      :message="msg"
+      :highlight="chatStore.focusMessageId === msg.id"
+    />
+    <Transition name="fade">
       <div v-if="chatStore.isRunActive || chatStore.abortState" class="streaming-indicator">
         <img
           :src="isDark ? thinkingImageDark : thinkingImageLight"
@@ -356,8 +332,8 @@ defineExpose({
           </div>
         </div>
       </div>
-      </Transition>
-      <Transition name="queue-float">
+    </Transition>
+    <Transition name="queue-float">
       <div v-if="queuedMessages.length > 0" class="queue-float-panel">
         <div class="queue-float-header">
           <span class="queue-orbit" aria-hidden="true">
@@ -388,22 +364,36 @@ defineExpose({
           </div>
         </div>
       </div>
-      </Transition>
-    </template>
-  </VirtualMessageList>
+    </Transition>
+  </div>
 </template>
 
 <style scoped lang="scss">
 @use "@/styles/variables" as *;
+
+.message-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background-color: $bg-card;
+  position: relative;
+
+  .dark & {
+    background-color: #333333;
+  }
+}
 
 .queue-float-panel {
   position: sticky;
   right: 16px;
   bottom: 16px;
   z-index: 4;
+  align-self: flex-end;
   width: min(340px, calc(100% - 16px));
-  margin-top: 16px;
-  margin-left: auto;
+  margin-top: auto;
   padding: 10px;
   border: 1px solid rgba(var(--accent-info-rgb), 0.22);
   border-radius: 16px;
@@ -614,28 +604,6 @@ defineExpose({
 
   p {
     font-size: 14px;
-  }
-}
-
-.history-loader {
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-}
-
-.history-loader-spinner {
-  width: 14px;
-  height: 14px;
-  border: 2px solid rgba(0, 0, 0, 0.16);
-  border-top-color: $accent-primary;
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-
-  .dark & {
-    border-color: rgba(255, 255, 255, 0.18);
-    border-top-color: $accent-primary;
   }
 }
 

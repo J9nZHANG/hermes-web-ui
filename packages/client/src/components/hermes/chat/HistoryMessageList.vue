@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { ref, computed, watch } from "vue";
+import { ref, computed, watch, nextTick } from "vue";
 import { useI18n } from "vue-i18n";
-import VirtualMessageList from "./VirtualMessageList.vue";
 import MessageItem from "./MessageItem.vue";
 import { useChatStore } from "@/stores/hermes/chat";
 import { useToolTraceVisibility } from "@/composables/useToolTraceVisibility";
 import type { Session } from "@/stores/hermes/chat";
+import logoUrl from "@/assets/logo.png";
 
 const props = defineProps<{
   session?: Session | null; // Optional: use this session instead of chatStore.activeSession
@@ -14,7 +14,7 @@ const props = defineProps<{
 const chatStore = useChatStore();
 const { toolTraceVisible } = useToolTraceVisibility();
 const { t } = useI18n();
-const listRef = ref<InstanceType<typeof VirtualMessageList> | null>(null);
+const listRef = ref<HTMLElement>();
 
 // Use provided session or fall back to chatStore's active session
 const activeSession = computed(() => props.session || chatStore.activeSession);
@@ -30,31 +30,38 @@ const displayMessages = computed(() =>
 );
 
 function isNearBottom(threshold = 200): boolean {
-  return listRef.value?.isNearBottom(threshold) ?? true;
+  const el = listRef.value;
+  if (!el) return true;
+  return el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
 }
 
 function scrollToBottom() {
-  listRef.value?.scrollToBottom();
+  nextTick(() => {
+    if (listRef.value) {
+      listRef.value.scrollTop = listRef.value.scrollHeight;
+    }
+  });
 }
 
 function scrollToMessage(messageId: string) {
-  listRef.value?.scrollToMessage(messageId);
-}
-
-function scrollToAnchor(messageId: string, anchorId: string) {
-  listRef.value?.scrollToAnchor(messageId, anchorId);
+  nextTick(() => {
+    const el = document.getElementById(`message-${messageId}`);
+    if (el) {
+      el.scrollIntoView({ block: 'center' });
+    }
+  });
 }
 
 // Scroll to bottom on session switch
 watch(
-  () => activeSession.value?.id,
+  () => chatStore.activeSessionId,
   (id) => {
     if (!id) return;
     if (chatStore.focusMessageId) {
-      scrollToMessage(chatStore.focusMessageId);
+      nextTick(() => scrollToMessage(chatStore.focusMessageId!));
       return;
     }
-    scrollToBottom();
+    nextTick(() => scrollToBottom());
   },
   { immediate: true },
 );
@@ -85,36 +92,39 @@ watch(
     scrollToBottom();
   },
 );
-
-defineExpose({
-  scrollToBottom,
-  scrollToMessage,
-  scrollToAnchor,
-});
 </script>
 
 <template>
-  <VirtualMessageList
-    ref="listRef"
-    :messages="displayMessages"
-  >
-    <template #empty>
-      <div class="empty-state">
-        <img src="/logo.png" alt="Hermes" class="empty-logo" />
-        <p>{{ t("chat.emptyState") }}</p>
-      </div>
-    </template>
-    <template #item="{ message: msg }">
-      <MessageItem
-        :message="msg"
-        :highlight="chatStore.focusMessageId === msg.id"
-      />
-    </template>
-  </VirtualMessageList>
+  <div ref="listRef" class="message-list">
+    <div v-if="!activeSession || activeSession.messages.length === 0" class="empty-state">
+      <img :src="logoUrl" alt="Hermes" class="empty-logo" />
+      <p>{{ t("chat.emptyState") }}</p>
+    </div>
+    <MessageItem
+      v-for="msg in displayMessages"
+      :key="msg.id"
+      :message="msg"
+      :highlight="chatStore.focusMessageId === msg.id"
+    />
+  </div>
 </template>
 
 <style scoped lang="scss">
 @use "@/styles/variables" as *;
+
+.message-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background-color: $bg-card;
+
+  .dark & {
+    background-color: #333333;
+  }
+}
 
 .empty-state {
   flex: 1;

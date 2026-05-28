@@ -141,11 +141,21 @@ export async function bootstrap() {
   app.use(proxyMiddleware)
   console.log('[bootstrap] routes registered')
 
-  // SPA fallback
+// SPA fallback - strip base path for static files
   const distDir = resolve(__dirname, '..', 'client')
+  app.use(async (ctx, next) => {
+    // Strip /hermes prefix for static file serving
+    if (ctx.path.startsWith('/hermes/')) {
+      ctx.path = ctx.path.slice(7) // Remove '/hermes'
+    }
+    await next()
+  })
   app.use(serve(distDir))
   app.use(async (ctx) => {
     if (!ctx.path.startsWith('/api') &&
+      !ctx.path.startsWith('/socket.io/') &&
+      !ctx.path.startsWith('/chat-run') &&
+      !ctx.path.startsWith('/group-chat') &&
       ctx.path !== '/health' &&
       ctx.path !== '/upload' &&
       ctx.path !== '/webhook') {
