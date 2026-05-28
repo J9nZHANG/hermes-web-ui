@@ -52,6 +52,21 @@ function scrollToMessage(messageId: string) {
   });
 }
 
+function scrollToAnchor(messageId: string, anchorId: string) {
+  nextTick(() => {
+    const el = document.getElementById(`anchor-${messageId}-${anchorId}`);
+    if (el) {
+      el.scrollIntoView({ block: 'center' });
+    }
+  });
+}
+
+defineExpose({
+  scrollToBottom,
+  scrollToMessage,
+  scrollToAnchor,
+});
+
 // Scroll to bottom on session switch
 watch(
   () => chatStore.activeSessionId,
